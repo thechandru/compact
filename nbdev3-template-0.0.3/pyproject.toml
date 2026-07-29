@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{repo}"
+description = "{description}"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [{name = "{author}", email = "{author_email}"}]
+keywords = ["nbdev", "jupyter", "notebook"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dynamic = ["version"]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/{user}/{repo}"
+Documentation = "https://{user}.github.io/{repo}/"
+
+[tool.setuptools.dynamic]
+version = {attr = "{lib_path}.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["{lib_path}"]
+
+[tool.nbdev]
+allowed_metadata_keys = ['solveit']
+allowed_cell_metadata_keys = ['solveit_ai']
+nbs_path = "."
+doc_path = "_docs"
+recursive = false
+
+[tool.chkstyle]
+skip_paths = ["_modidx.py"]

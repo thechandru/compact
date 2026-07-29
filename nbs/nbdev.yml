@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "compact"
+  site-url: "https://thechandru.github.io/compact"
+  description: "Tiny implementation of scheme in Python"
+  repo-branch: main
+  repo-url: "https://github.com/thechandru/compact"

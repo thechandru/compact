@@ -41,12 +41,8 @@ def lexer(s): return [t for t in re.findall(TOKEN_RE, s) if not t.startswith(';'
 
 # %% ../nbs/02_reader.ipynb #9bdf87dc
 def parse_list(sl):
-    match sl:
-        case [*head, Symbol(s="."), tail] if head: return list2pair(head, tail)
-        case _ if Symbol(s=".") in sl: raise SyntaxError("malformed dotted list")
-        # case _ if any(isinstance(o, Symbol) and o.s == "." for o in sl): raise SyntaxError("malformed dotted list")
-        # case [*_, Symbol(s="."), *_]: raise SyntaxError("malformed dotted list")
-        case _: return list2pair(sl)
+    if Symbol(s=".") in sl: raise SyntaxError("malformed dotted list")
+    return sl
 
 # %% ../nbs/02_reader.ipynb #ac1c8aca
 def parser(toks):
@@ -67,7 +63,7 @@ def parser(toks):
         ",": "unquote",
         ",@": "unquote-splicing",
     }
-    if t in sugar: return list2pair([Symbol(sugar[t]), parser(toks)])
+    if t in sugar: return [Symbol(sugar[t]), parser(toks)]
 
     return Atom(t)
 

@@ -41,12 +41,16 @@ class Pair:
     __slots__ = ("car", "cdr")
     def __init__(self, car, cdr): self.car,self.cdr = car,cdr
     def __eq__(self, other): return isinstance(other, Pair) and self.car == other.car and self.cdr == other.cdr
+    def __iter__(self):
+        p = self
+        while isinstance(p, Pair): yield p.car; p = p.cdr
     __repr__ = basic_repr("car,cdr")
 
 # %% ../nbs/01_types.ipynb #f8c1dae5
 class NilType:
     def __str__(self): return "()"
     def __repr__(self): return str(self)
+    def __iter__(self): return iter(())
 
 # %% ../nbs/01_types.ipynb #39aafcad
 Nil = NilType()

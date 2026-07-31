@@ -6,7 +6,7 @@ Docs: https://thechandru.github.io/compactcore.html.md"""
 
 # %% auto #0
 __all__ = ['scm_apply', 'scm_sub', 'scm_div', 'is_num', 'is_sym', 'Env', 'scm_eval_one_step', 'scm_eval_tco', 'body_expr',
-           'arity', 'bind_params', 'qq']
+           'arity', 'bind_params', 'pair2list', 'qq']
 
 # %% ../nbs/00_core.ipynb #2660d14a
 from .reader import *
@@ -46,8 +46,8 @@ _builtin = {
 }
 
 
-# %% ../nbs/00_core.ipynb #5da68d77
-def _sf_quote(xs, env, sfs): return xs[0]
+# %% ../nbs/00_core.ipynb #acfbfed0
+def _sf_quote(xs, env, sfs): return list2pair(xs[0])
 
 # %% ../nbs/00_core.ipynb #cce61651
 class Env:
@@ -151,14 +151,17 @@ def _sf_define_tco(xs, env, sfs):
     if isinstance(arg0, list): return _mkfn(arg0[0], [Symbol("lambda"), arg0[1:], *rest])
 
 
-# %% ../nbs/00_core.ipynb #7be1dd02
-# class Macro:
-#     def __init__(self, fn): store_attr()
-
 # %% ../nbs/00_core.ipynb #aeb0a60a
 def _macro(args, env, sfs):
     params, *body = args
     return Macro(lambda *vals: scm_eval_tco(body_expr(body), env.new_frame(bind_params(params, vals)), sfs))
+
+# %% ../nbs/00_core.ipynb #0f1c9dae
+def pair2list(p):
+    "walk a Pair chain into a python list"
+    out = []
+    while isinstance(p, Pair): out.append(p.car); p = p.cdr
+    return out
 
 # %% ../nbs/00_core.ipynb #205ad9ed
 def qq(x, env, sfs, depth=1):
@@ -180,13 +183,10 @@ def qq(x, env, sfs, depth=1):
 
     res = []
     for o in x:
-        if UQS.match(o) and depth == 1: res.extend(scm_eval_tco(o[1], env, sfs))
+        if UQS.match(o) and depth == 1: res.extend(pair2list(scm_eval_tco(o[1], env, sfs)))
         else: res.append(qq(o, env, sfs, depth))
     
     return res
 
 # %% ../nbs/00_core.ipynb #84e4102e
 def _sf_quasiquote(args, env, sfs): return qq(args[0], env, sfs)
-
-# %% ../nbs/00_core.ipynb #518d359e
-def _sf_quote(xs, env, sfs): return list2pair(xs[0])

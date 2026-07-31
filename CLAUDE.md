@@ -18,23 +18,18 @@ These are principles, not rules. Read the situation and apply judgment - don't f
 
 ## Python export
 
-To export Python files from dialogs, call `nb_export` directly after any notebook changes. Never edit `.py` files directly - always edit the `.ipynb` dialog and export.
+Never edit `.py` files directly - always edit the `.ipynb` dialog and export.
 
-```python
-from nbdev.export import nb_export
-nb_export('fs.ipynb', lib_path='.', name='fs', solo_nb=True)
-# adjust path/name/lib_path per dialog
+To export all notebooks:
+```bash
+nbdev-export
 ```
 
-`lib_path` must match the directory where the `.py` file lives, not the notebook:
+To export a single notebook:
+```bash
+nbdev-export --path fs.ipynb
+```
 
-| notebook | lib_path | result |
-|---|---|---|
-| `fs.ipynb` | `'.'` | `./fs.py` |
-| `pages/prospect.ipynb` | `'pages'` | `pages/prospect.py` |
-| `views/banner.ipynb` | `'views'` | `views/banner.py` |
-
-After exporting, verify with `grep` that the changed code is in the correct `.py` file. If the export silently succeeds but the change is missing, check that `lib_path` is correct - a wrong `lib_path` writes a stale file to the wrong location with no error.
 
 ## Programming rhythm
 
@@ -88,7 +83,7 @@ Never use `NotebookEdit`, direct JSON editing, or raw `.ipynb` manipulation.
 
 ### `dialoghelper.termskill` - primary tool
 
-Use for any in-place message edits (string replace, line replace, AST edits) and for multi-step workflows where pinning the dialog saves repetition. All functions are `async`.
+Use for any in-place message edits (string replace, line replace, Python-code edits) and for multi-step workflows where pinning the dialog saves repetition. All functions are `async`.
 
 Dialog names use a **leading `/`**: `/projects/dunkin/<path>` (no `.ipynb`).
 
@@ -96,14 +91,14 @@ Dialog names use a **leading `/`**: `/projects/dunkin/<path>` (no `.ipynb`).
 # One-liner (single async call)
 python3 -c "
 import asyncio
-from dialoghelper.termskill import *
+from dialoghelper.termskill import view_dlg
 print(asyncio.run(view_dlg('/projects/dunkin/pages/inventory')))
 "
 
 # Multi-step workflow - pin dialog once, then chain calls
 python3 << 'EOF'
 import asyncio
-from dialoghelper.termskill import *
+from dialoghelper.termskill import set_dialog, view_dlg, add_msg, msg_str_replace, msg_replace_lines
 
 async def main():
     set_dialog('/projects/dunkin/pages/inventory')
@@ -127,15 +122,12 @@ Key functions:
 - `msg_replace_lines(id, start, end, new_content)` - replace line range (1-based)
 - `msg_insert_line(id, insert_line, new_str)` - insert after line number
 - `msg_del_lines(id, start, end)` - delete line range
-- `msg_lnhashview(id)` - show hash-verified line addresses for a message
-- `msg_exhash(id, cmds)` - apply hash-verified surgical edits to a message
-- `msg_ast_replace(id, pattern, rewrite)` - AST-based code edit
+- `msg_python(id, code)` - edit content via Python (`text` var holds content, last expr is new content)
 - `del_msg(id, dname)` - delete message
 - `update_msg(id, is_exported=1, dname)` - mark a cell as exported (use this, not add_msg)
 
 Always call `view_msg(id)` immediately before any line-based edit - never rely on line numbers from earlier in the conversation. To verify a cell was exported correctly, use `view_msg(id)` - never `grep` or `json.load` on the `.ipynb` file directly.
 
-For surgical edits, prefer hash-verified editing: call `msg_lnhashview(id)` immediately before editing, copy the exact `lineno|hash|` addresses, then apply `msg_exhash(id, cmds)` with raw triple-quoted strings. Work backwards from bottom to top when making multiple edits so line shifts don't stale later addresses. Use `msg_replace_lines` for simple full-line edits, but prefer `msg_exhash` when precision matters.
 
 #### Common mistakes
 

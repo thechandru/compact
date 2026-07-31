@@ -1,11 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sic message.exec --name projects/compact/nbs/00_core --id _f1ae6ce4)",
-      "Bash(sic dialog.read_msg --name projects/compact/nbs/00_core --id _f1ae6ce4)",
-      "Bash(sic message.exec --name projects/compact/nbs/00_core --id _15b4f5f5)",
-      "Bash(sic message.exec --name projects/compact/nbs/00_core --id _954a87bc)",
-      "Bash(sic dialog.read_msg --name projects/compact/nbs/00_core --id _954a87bc)",
       "Bash(sic *)"
     ]
   }

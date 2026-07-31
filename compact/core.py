@@ -164,6 +164,23 @@ def _sf_define_tco(xs, env, sfs):
     if isinstance(arg0, Symbol): return _mkfn(arg0, body_expr(rest))
     if isinstance(arg0, list): return _mkfn(arg0[0], [Symbol("lambda"), arg0[1:]] + rest)
 
+# %% ../nbs/00_core.ipynb #d3431242
+def _sf_set(xs, env, sfs):
+    sym, expr = xs
+    if not isinstance(sym, Symbol): raise SyntaxError(f"set! argument {sym} must be a symbol")
+    e = env.find(sym.s)
+    if e is None: raise NameError(sym.s)
+
+    e[sym.s] = scm_eval_tco(expr, env, sfs)
+    return sym.s
+
+# %% ../nbs/00_core.ipynb #8746edea
+def _sf_let(xs, env, sfs):
+    binds, *body = xs
+    new_env = env.new_frame({name.s: scm_eval_tco(val, env, sfs) for name, val in binds})
+
+    return Thunk(body_expr(body), new_env)
+
 # %% ../nbs/00_core.ipynb #7300b953
 def _macro(args, env, sfs):
     params, *body = args

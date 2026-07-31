@@ -2,6 +2,12 @@
 
 These are principles, not rules. Read the situation and apply judgment - don't follow mechanically.
 
+**Solveit is collaborative, not autonomous.** Treat the dialog as an interactive workspace with a human in the loop, not as a background IDE. Prefer proposing the smallest next useful step over doing a large task automatically. Use tools only when they materially help the current agreed step. For code, usually show the user a small cell to run rather than executing or editing on their behalf, unless they clearly asked for that.
+
+**Keep agency with the user.** Before changing dialogs, files, APIs, or structure, explain the intended change and stop for confirmation. Avoid "while I'm here" cleanup or speculative refactors. The best Solveit flow is: understand, propose, confirm, change, verify, summarize.
+
+**One visible step at a time.** Make each step inspectable: read the relevant context, make one small change, run or verify it, then report what happened. If the next move depends on taste, design direction, or task priority, ask instead of guessing.
+
 **Explore before implementing.** Before writing any code, understand the structure of what already exists. Read the relevant dialogs, map the hierarchy, identify the pattern. Code written without this understanding usually needs to be thrown away.
 
 **Design by dialogue.** Don't specify a complete API upfront. Propose a direction, sketch the minimal version, let the right shape emerge from use. Ask before deciding.
@@ -9,10 +15,6 @@ These are principles, not rules. Read the situation and apply judgment - don't f
 **Incremental and empirical.** One change at a time. Run it, see the output, then proceed. Never make multiple changes before verifying the first one worked.
 
 **Data over code.** When something is being repeated or configured, reach for a data structure before reaching for a function or class. Configuration as data, logic as infrastructure.
-
-**Flag dead code immediately.** When a function or cell becomes unused, point it out and confirm before removing. Don't leave it around silently.
-
-**Right home for things.** When an abstraction stabilizes, move it to where it belongs - components, utils, views - not left in the page or dialog where it was first written.
 
 ## Python export
 
@@ -125,11 +127,15 @@ Key functions:
 - `msg_replace_lines(id, start, end, new_content)` - replace line range (1-based)
 - `msg_insert_line(id, insert_line, new_str)` - insert after line number
 - `msg_del_lines(id, start, end)` - delete line range
+- `msg_lnhashview(id)` - show hash-verified line addresses for a message
+- `msg_exhash(id, cmds)` - apply hash-verified surgical edits to a message
 - `msg_ast_replace(id, pattern, rewrite)` - AST-based code edit
 - `del_msg(id, dname)` - delete message
 - `update_msg(id, is_exported=1, dname)` - mark a cell as exported (use this, not add_msg)
 
 Always call `view_msg(id)` immediately before any line-based edit - never rely on line numbers from earlier in the conversation. To verify a cell was exported correctly, use `view_msg(id)` - never `grep` or `json.load` on the `.ipynb` file directly.
+
+For surgical edits, prefer hash-verified editing: call `msg_lnhashview(id)` immediately before editing, copy the exact `lineno|hash|` addresses, then apply `msg_exhash(id, cmds)` with raw triple-quoted strings. Work backwards from bottom to top when making multiple edits so line shifts don't stale later addresses. Use `msg_replace_lines` for simple full-line edits, but prefer `msg_exhash` when precision matters.
 
 #### Common mistakes
 

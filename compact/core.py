@@ -73,6 +73,7 @@ def scm_eval_tco(expr, env, sfs=()):
         else: return r
 
 # %% ../nbs/00_core.ipynb #f0091913
+def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {chr(32).join(map(repr, irritants))}")
 def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
 def _scm_div(x, *xs): return 1/x if not xs else x / math.prod(xs)
 
@@ -108,6 +109,7 @@ _builtin |= {
     "pair?": _is_pair,
     "list?": _is_list,
     "not": lambda x: x is False,
+    "error": _scm_error,
 }
 
 # %% ../nbs/00_core.ipynb #cf72bbe6
@@ -324,6 +326,8 @@ class LispCtx:
             "quote":      _sf_quote,
             "quasiquote": _sf_quasiquote,
         }
-        return scm_eval_tco(parse(s), self.env, sfs)
+        exprs = parse_all(s)
+        expr = exprs[0] if len(exprs) == 1 else [Symbol("begin")] + exprs
+        return scm_eval_tco(expr, self.env, sfs)
 
 lisp = LispCtx()

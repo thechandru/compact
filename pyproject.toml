@@ -3,19 +3,19 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "compact"
+name = "compact-scheme"
 dynamic = ["version"]
 description = "Tiny implementation of scheme in Python"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
-authors = [{name = "Solveit", email = "nobody@fast.ai"}]
-keywords = ['nbdev']
+authors = [{name = "Chandru Subramanian", email = "hello@chandru.blog"}]
+keywords = ["scheme", "lisp", "interpreter", "embedded", "interop"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
 ]
-dependencies = []
+dependencies = ["fastcore"]
 
 [project.urls]
 Repository = "https://github.com/thechandru/compact"

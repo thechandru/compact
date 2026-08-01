@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(sic *)",
-      "WebFetch(domain:thechandru.github.io)"
+      "WebFetch(domain:thechandru.github.io)",
+      "WebFetch(domain:fastht.ml)",
+      "WebFetch(domain:fastcore.fast.ai)"
     ]
   }
 }

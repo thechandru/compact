@@ -2,7 +2,7 @@ project:
   output-dir: _docs
 
 website:
-  title: "compact"
+  title: "compact-scheme"
   site-url: "https://thechandru.github.io/compact"
   description: "Tiny implementation of scheme in Python"
   repo-branch: main

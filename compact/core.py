@@ -9,7 +9,7 @@ __all__ = ['lisp', 'Env', 'scm_apply', 'scm_eval_one_step', 'scm_eval_tco', 'Lis
 
 # %% ../nbs/00_core.ipynb #e086d109
 import math, operator as op
-from fastcore.basics import store_attr, first
+from fastcore.basics import store_attr, first, last, last, last
 
 from .reader import *
 from .types import *
@@ -172,9 +172,16 @@ def _sf_set(xs, env, sfs):
 
 # %% ../nbs/00_core.ipynb #8746edea
 def _sf_let(xs, env, sfs):
-    binds, *body = xs
-    new_env = env.new_frame({name.s: scm_eval_tco(val, env, sfs) for name, val in binds})
-    return Thunk(_body_expr(body), new_env)
+    ev = lambda x: scm_eval_tco(x, env, sfs)
+    match xs:
+        case [Symbol(s=nm), binds, *body]:  # (let loop ((i 0)) body)
+            params, inits = zip(*[(o[0], ev(o[1])) for o in binds])
+            new_env = env.new_frame({nm: None})
+            new_env[nm] = _sf_lambda_tco([list(params)] + body, new_env, sfs)
+            return new_env[nm](*inits)
+        case [binds, *body]:                # (let ((x 1)) body)
+            new_env = env.new_frame({n.s: ev(v) for n,v in binds})
+            return Thunk(_body_expr(body), new_env)
 
 # %% ../nbs/00_core.ipynb #e81c3961
 def _sf_cond(xs, env, sfs):

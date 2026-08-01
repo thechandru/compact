@@ -81,6 +81,10 @@ def _is_sym(x): return isinstance(x, Symbol)
 def _is_sym_eq(x, s): return _is_sym(x) and x.s == s
 def _is_list(x): return isinstance(x, list)
 def _is_pair(x): return isinstance(x, list) and bool(x)
+def _scm_equal(x, y):
+    if type(x) != type(y): return False
+    if isinstance(x, list): return len(x) == len(y) and all(_scm_equal(a,b) for a,b in zip(x,y))
+    return x == y
 def _str2num(s):
     try: return int(s)
     except ValueError:
@@ -109,7 +113,8 @@ _builtin |= {
     "substring": lambda s,i,j: s[i:j],
     "number->string": str, "string->number": _str2num,
 }
-_builtin |= {"not": lambda x: x is False, "error": _scm_error}
+_builtin |= {"equal?": _scm_equal,
+    "not": lambda x: x is False, "error": _scm_error}
 
 # %% ../nbs/00_core.ipynb #cf72bbe6
 def _sf_quote(xs, env, sfs): return xs[0]

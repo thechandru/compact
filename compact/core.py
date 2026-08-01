@@ -113,7 +113,8 @@ _builtin |= {
     "substring": lambda s,i,j: s[i:j],
     "number->string": str, "string->number": _str2num,
 }
-_builtin |= {"equal?": _scm_equal,
+_builtin |= {"symbol->string": lambda x: x.s, "string->symbol": Symbol,
+    "equal?": _scm_equal,
     "not": lambda x: x is False, "error": _scm_error}
 
 # %% ../nbs/00_core.ipynb #cf72bbe6

@@ -73,44 +73,43 @@ def scm_eval_tco(expr, env, sfs=()):
         else: return r
 
 # %% ../nbs/00_core.ipynb #f0091913
-def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {chr(32).join(map(repr, irritants))}")
+def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {' '.join(map(repr, irritants))}")
 def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
 def _scm_div(x, *xs): return 1/x if not xs else x / math.prod(xs)
-
 def _is_num(x): return not isinstance(x, bool) and isinstance(x, (int, float, complex))
 def _is_sym(x): return isinstance(x, Symbol)
-
-_builtin = {
-    "+": lambda *xs: sum(xs),
-    "*": lambda *xs: math.prod(xs),
-    "/": _scm_div,
-    "-": _scm_sub,
-    ">": op.gt,
-    "<": op.lt,
-    "=": lambda x,y: _is_num(x) and _is_num(y) and x == y,
-    "<=": op.le,
-    ">=": op.ge,
-
-    "number?": _is_num,
-    "string?": lambda x: isinstance(x, str),
-    "symbol?": _is_sym,
-    "boolean?": lambda x: isinstance(x, bool),
-}
-
+def _is_sym_eq(x, s): return _is_sym(x) and x.s == s
 def _is_list(x): return isinstance(x, list)
 def _is_pair(x): return isinstance(x, list) and bool(x)
+def _str2num(s):
+    try: return int(s)
+    except ValueError:
+        try: return float(s)
+        except ValueError: return False
 
-_builtin |= {
-    "list": lambda *xs: list(xs),
-    "cons": lambda x,y: [x] + y,
-    "car": lambda x: x[0],
-    "cdr": lambda x: x[1:],
-    "null?": lambda x: x == [],
-    "pair?": _is_pair,
-    "list?": _is_list,
-    "not": lambda x: x is False,
-    "error": _scm_error,
+_builtin = {
+    "+": lambda *xs: sum(xs), 
+    "*": lambda *xs: math.prod(xs),
+    "-": _scm_sub, "/": _scm_div,
+    "=": lambda x,y: _is_num(x) and _is_num(y) and x == y,
+    "<": op.lt, ">": op.gt, "<=": op.le, ">=": op.ge,
 }
+_builtin |= {
+    "number?": _is_num, "string?": lambda x: isinstance(x, str),
+    "symbol?": _is_sym, "boolean?": lambda x: isinstance(x, bool),
+    "null?": lambda x: x == [], "pair?": _is_pair, "list?": _is_list,
+}
+_builtin |= {
+    "list": lambda *xs: list(xs), "cons": lambda x,y: [x] + y,
+    "car": lambda x: x[0], "cdr": lambda x: x[1:],
+}
+_builtin |= {
+    "string-append": lambda *xs: "".join(xs),
+    "string-length": len,
+    "substring": lambda s,i,j: s[i:j],
+    "number->string": str, "string->number": _str2num,
+}
+_builtin |= {"not": lambda x: x is False, "error": _scm_error}
 
 # %% ../nbs/00_core.ipynb #cf72bbe6
 def _sf_quote(xs, env, sfs): return xs[0]
@@ -175,7 +174,7 @@ def _sf_let(xs, env, sfs):
 # %% ../nbs/00_core.ipynb #e81c3961
 def _sf_cond(xs, env, sfs):
     for test, *body in xs:
-        if (isinstance(test, Symbol) and test.s == 'else') or scm_eval_tco(test, env, sfs) is not False:
+        if _is_sym_eq(test, 'else') or scm_eval_tco(test, env, sfs) is not False:
             return Thunk(_body_expr(body), env)
 
 # %% ../nbs/00_core.ipynb #ca481cda
@@ -231,7 +230,7 @@ def _sf_fold_right(xs, env, sfs):
 def _sf_case(xs, env, sfs):
     key = scm_eval_tco(xs[0], env, sfs)
     for vals, *body in xs[1:]:
-        if (isinstance(vals, Symbol) and vals.s == 'else') or key in vals: return Thunk(_body_expr(body), env)
+        if _is_sym_eq(vals, 'else') or key in vals: return Thunk(_body_expr(body), env)
 
 # %% ../nbs/00_core.ipynb #6115ce5e
 def _invoke(fn, args, sfs):

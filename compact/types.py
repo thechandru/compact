@@ -29,5 +29,5 @@ class Macro:
 
 # %% ../nbs/01_types.ipynb #66d47471
 class Thunk:
-    "a piece of computation that can be executed later"
+    "a unit of computation that can be executed"
     def __init__(self, expr, env): store_attr()

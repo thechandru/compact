@@ -45,7 +45,6 @@ class Env:
     def new_frame(self, bindings=()):
         return Env(dict(bindings), parent=self)
 
-
 # %% ../nbs/00_core.ipynb #48103d34
 def scm_apply(fn, args): return fn(*args)
 
@@ -198,28 +197,66 @@ def _sf_let_star(xs, env, sfs):
         env = env.new_frame({name.s: scm_eval_tco(val, env, sfs)})
     return Thunk(_body_expr(body), env)
 
-# %% ../nbs/00_core.ipynb #ae564d3a
+# %% ../nbs/00_core.ipynb #3c7ed442
+def _sf_when(xs, env, sfs):
+    test, *body = xs
+    if scm_eval_tco(test, env, sfs) is not False: return Thunk(_body_expr(body), env)
+
+def _sf_unless(xs, env, sfs):
+    test, *body = xs
+    if scm_eval_tco(test, env, sfs) is False: return Thunk(_body_expr(body), env)
+
+# %% ../nbs/00_core.ipynb #0167198f
+def _sf_letrec(xs, env, sfs):
+    binds, *body = xs
+    new_env = env.new_frame({name.s: None for name, _ in binds})
+    for name, val in binds: new_env[name.s] = scm_eval_tco(val, new_env, sfs)
+    return Thunk(_body_expr(body), new_env)
+
+# %% ../nbs/00_core.ipynb #935f80b2
+def _sf_fold_left(xs, env, sfs):
+    fn, acc, lst = [scm_eval_tco(x, env, sfs) for x in xs]
+    for x in lst: acc = _invoke(fn, [acc, x], sfs)
+    return acc
+
+def _sf_fold_right(xs, env, sfs):
+    fn, init, lst = [scm_eval_tco(x, env, sfs) for x in xs]
+    acc = init
+    for x in reversed(lst): acc = _invoke(fn, [x, acc], sfs)
+    return acc
+
+# %% ../nbs/00_core.ipynb #d823425c
+def _sf_case(xs, env, sfs):
+    key = scm_eval_tco(xs[0], env, sfs)
+    for vals, *body in xs[1:]:
+        if (isinstance(vals, Symbol) and vals.s == 'else') or key in vals: return Thunk(_body_expr(body), env)
+
+# %% ../nbs/00_core.ipynb #6115ce5e
 def _invoke(fn, args, sfs):
     "call fn resolving any TCO thunk"
     r = scm_apply(fn, args)
     return scm_eval_tco(r.expr, r.env, sfs) if isinstance(r, Thunk) else r
 
+# %% ../nbs/00_core.ipynb #eecbdd8b
 def _sf_apply(xs, env, sfs):
     fn   = scm_eval_tco(xs[0], env, sfs)
     args = [scm_eval_tco(o, env, sfs) for o in xs[1:-1]]
     last = scm_eval_tco(xs[-1], env, sfs)
     return _invoke(fn, args + list(last), sfs)
 
+# %% ../nbs/00_core.ipynb #e2a3744a
 def _sf_map(xs, env, sfs):
     fn   = scm_eval_tco(xs[0], env, sfs)
     lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
     return [_invoke(fn, list(args), sfs) for args in zip(*lsts)]
 
+# %% ../nbs/00_core.ipynb #810ac31e
 def _sf_filter(xs, env, sfs):
     fn  = scm_eval_tco(xs[0], env, sfs)
     lst = scm_eval_tco(xs[1], env, sfs)
     return [x for x in lst if _invoke(fn, [x], sfs) is not False]
 
+# %% ../nbs/00_core.ipynb #a3316139
 def _sf_for_each(xs, env, sfs):
     fn   = scm_eval_tco(xs[0], env, sfs)
     lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
@@ -260,27 +297,33 @@ class LispCtx:
     "convenenience lisp context for interop"
     def __init__(self):
         self.env = Env(globals(), primitives=_builtin)
-    
+
     def __rmatmul__(self, s):
         sfs = {
-            "begin":    _sf_begin_tco,
-            "if":       _sf_if_tco,
-            "cond":     _sf_cond,
-            "and":      _sf_and,
-            "or":       _sf_or,
-            "define":   _sf_define_tco,
-            "lambda":   _sf_lambda_tco,
-            "macro":    _macro,
-            "set!":     _sf_set,
-            "let":      _sf_let,
-            "let*":     _sf_let_star,
-            "apply":    _sf_apply,
-            "map":      _sf_map,
-            "filter":   _sf_filter,
-            "for-each": _sf_for_each,
+            "begin":      _sf_begin_tco,
+            "if":         _sf_if_tco,
+            "cond":       _sf_cond,
+            "case":       _sf_case,
+            "and":        _sf_and,
+            "or":         _sf_or,
+            "when":       _sf_when,
+            "unless":     _sf_unless,
+            "define":     _sf_define_tco,
+            "lambda":     _sf_lambda_tco,
+            "macro":      _macro,
+            "set!":       _sf_set,
+            "let":        _sf_let,
+            "let*":       _sf_let_star,
+            "letrec":     _sf_letrec,
+            "apply":      _sf_apply,
+            "map":        _sf_map,
+            "filter":     _sf_filter,
+            "for-each":   _sf_for_each,
+            "fold-left":  _sf_fold_left,
+            "fold-right": _sf_fold_right,
             "quote":      _sf_quote,
             "quasiquote": _sf_quasiquote,
         }
         return scm_eval_tco(parse(s), self.env, sfs)
-        
+
 lisp = LispCtx()

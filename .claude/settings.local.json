@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sic *)"
+      "Bash(sic *)",
+      "WebFetch(domain:thechandru.github.io)"
     ]
   }
 }

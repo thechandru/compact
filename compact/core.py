@@ -109,6 +109,7 @@ _builtin |= {
     "null?": lambda x: x == [],
     "pair?": is_pair,
     "list?": is_list,
+    "not": lambda x: x is False,
 }
 
 # %% ../nbs/00_core.ipynb #cf72bbe6
@@ -122,22 +123,6 @@ def _sf_begin_tco(xs, env, sfs):
 # %% ../nbs/00_core.ipynb #3442b420
 def body_expr(body): return body[0] if len(body) == 1 else [Symbol("begin")] + body
 
-# %% ../nbs/00_core.ipynb #f72f6bd8
-def _sf_if_tco(xs, env, sfs):
-    cond,then_,else_ = xs
-    br = else_ if scm_eval_tco(cond, env, sfs) is False else then_
-    return Thunk(br, env)
-
-
-# %% ../nbs/00_core.ipynb #9a549a5a
-def _sf_lambda_tco(xs, env, sfs): 
-    params, *body = xs
-    def procedure(*args):
-        return Thunk(body_expr(body), env.new_frame(bind_params(params, args)))
-    return procedure
-    # return lambda *args: Thunk(body_expr(body), Env(**bind_params(params, args), parent=env))
-
-# %% ../nbs/00_core.ipynb #efce91e6
 def arity(ps, vs):
     if len(vs) == len(ps): return vs
     raise ValueError(f"incorrect number of vs passed (wanted: {len(ps)}, got: {len(vs)})")
@@ -145,6 +130,19 @@ def arity(ps, vs):
 def bind_params(ps, vs):
     if isinstance(ps, Symbol): return {ps.s: list(vs)}
     return dict(zip([p.s for p in ps], arity(ps, vs)))
+
+# %% ../nbs/00_core.ipynb #1582e36f
+def _sf_if_tco(xs, env, sfs):
+    cond,then_,else_ = xs
+    br = else_ if scm_eval_tco(cond, env, sfs) is False else then_
+    return Thunk(br, env)
+
+# %% ../nbs/00_core.ipynb #9a549a5a
+def _sf_lambda_tco(xs, env, sfs): 
+    params, *body = xs
+    def procedure(*args):
+        return Thunk(body_expr(body), env.new_frame(bind_params(params, args)))
+    return procedure
 
 # %% ../nbs/00_core.ipynb #cf48dc77
 def _sf_define_tco(xs, env, sfs):
@@ -172,8 +170,61 @@ def _sf_set(xs, env, sfs):
 def _sf_let(xs, env, sfs):
     binds, *body = xs
     new_env = env.new_frame({name.s: scm_eval_tco(val, env, sfs) for name, val in binds})
-
     return Thunk(body_expr(body), new_env)
+
+# %% ../nbs/00_core.ipynb #e81c3961
+def _sf_cond(xs, env, sfs):
+    for test, *body in xs:
+        if (isinstance(test, Symbol) and test.s == 'else') or scm_eval_tco(test, env, sfs) is not False:
+            return Thunk(body_expr(body), env)
+
+# %% ../nbs/00_core.ipynb #ca481cda
+def _sf_and(xs, env, sfs):
+    if not xs: return True
+    for o in xs[:-1]:
+        if scm_eval_tco(o, env, sfs) is False: return False
+    return Thunk(xs[-1], env)
+
+def _sf_or(xs, env, sfs):
+    if not xs: return False
+    for o in xs[:-1]:
+        v = scm_eval_tco(o, env, sfs)
+        if v is not False: return v
+    return Thunk(xs[-1], env)
+
+# %% ../nbs/00_core.ipynb #9070b61c
+def _sf_let_star(xs, env, sfs):
+    binds, *body = xs
+    for name, val in binds:
+        env = env.new_frame({name.s: scm_eval_tco(val, env, sfs)})
+    return Thunk(body_expr(body), env)
+
+# %% ../nbs/00_core.ipynb #ae564d3a
+def _invoke(fn, args, sfs):
+    "call fn resolving any TCO thunk"
+    r = scm_apply(fn, args)
+    return scm_eval_tco(r.expr, r.env, sfs) if isinstance(r, Thunk) else r
+
+def _sf_apply(xs, env, sfs):
+    fn   = scm_eval_tco(xs[0], env, sfs)
+    args = [scm_eval_tco(o, env, sfs) for o in xs[1:-1]]
+    last = scm_eval_tco(xs[-1], env, sfs)
+    return _invoke(fn, args + list(last), sfs)
+
+def _sf_map(xs, env, sfs):
+    fn   = scm_eval_tco(xs[0], env, sfs)
+    lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
+    return [_invoke(fn, list(args), sfs) for args in zip(*lsts)]
+
+def _sf_filter(xs, env, sfs):
+    fn  = scm_eval_tco(xs[0], env, sfs)
+    lst = scm_eval_tco(xs[1], env, sfs)
+    return [x for x in lst if _invoke(fn, [x], sfs) is not False]
+
+def _sf_for_each(xs, env, sfs):
+    fn   = scm_eval_tco(xs[0], env, sfs)
+    lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
+    for args in zip(*lsts): _invoke(fn, list(args), sfs)
 
 # %% ../nbs/00_core.ipynb #7300b953
 def _macro(args, env, sfs):
@@ -213,16 +264,23 @@ class LispCtx:
     
     def __rmatmul__(self, s):
         sfs = {
-            "begin": _sf_begin_tco,
-            "if": _sf_if_tco,
-            "define": _sf_define_tco,
-            "lambda": _sf_lambda_tco,
-            "macro": _macro,
-            "set!": _sf_set,
-            "let": _sf_let,
-            "quote": _sf_quote,
+            "begin":    _sf_begin_tco,
+            "if":       _sf_if_tco,
+            "cond":     _sf_cond,
+            "and":      _sf_and,
+            "or":       _sf_or,
+            "define":   _sf_define_tco,
+            "lambda":   _sf_lambda_tco,
+            "macro":    _macro,
+            "set!":     _sf_set,
+            "let":      _sf_let,
+            "let*":     _sf_let_star,
+            "apply":    _sf_apply,
+            "map":      _sf_map,
+            "filter":   _sf_filter,
+            "for-each": _sf_for_each,
+            "quote":      _sf_quote,
             "quasiquote": _sf_quasiquote,
-            
         }
         return scm_eval_tco(parse(s), self.env, sfs)
         

@@ -9,7 +9,7 @@ __all__ = ['lisp', 'Env', 'scm_apply', 'scm_eval_one_step', 'scm_eval_tco', 'Lis
 
 # %% ../nbs/00_core.ipynb #e086d109
 import math, operator as op
-from fastcore.basics import store_attr, first, last, last, last
+from fastcore.basics import store_attr, first, last
 
 from .reader import *
 from .types import *
@@ -72,6 +72,26 @@ def scm_eval_tco(expr, env, sfs=()):
         if isinstance(r, Thunk): expr, env = r.expr, r.env
         else: return r
 
+# %% ../nbs/00_core.ipynb #3643fcab
+class LispCtx:
+    "convenience lisp context for interop"
+    def __init__(self):
+        self.env = Env(globals(), primitives=_builtin)
+        self.sfs = {}
+
+    def sf(self, nm=None):
+        def reg(fn):
+            key = nm or fn.__name__.removeprefix('_sf_').replace('_', '-')
+            self.sfs[key] = fn; return fn
+        return reg
+
+    def __rmatmul__(self, s):
+        exprs = parse_all(s)
+        expr = exprs[0] if len(exprs) == 1 else [Symbol("begin")] + exprs
+        return scm_eval_tco(expr, self.env, self.sfs)
+
+lisp = LispCtx()
+
 # %% ../nbs/00_core.ipynb #f0091913
 def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {' '.join(map(repr, irritants))}")
 def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
@@ -113,55 +133,68 @@ _builtin |= {
     "substring": lambda s,i,j: s[i:j],
     "number->string": str, "string->number": _str2num,
 }
+_builtin |= {
+    "floor": math.floor, "ceiling": math.ceil,
+    "round": round, "truncate": math.trunc,
+    "abs": abs, "min": min, "max": max,
+    "expt": pow, "modulo": op.mod,
+    "remainder": lambda x,y: x - int(x/y)*y,
+}
 _builtin |= {"symbol->string": lambda x: x.s, "string->symbol": Symbol,
     "equal?": _scm_equal,
     "not": lambda x: x is False, "error": _scm_error}
 
 # %% ../nbs/00_core.ipynb #cf72bbe6
+@lisp.sf()
 def _sf_quote(xs, env, sfs): return xs[0]
 
 # %% ../nbs/00_core.ipynb #33b4f9f4
-def _sf_begin_tco(xs, env, sfs):
+@lisp.sf()
+def _sf_begin(xs, env, sfs):
     for o in xs[:-1]: scm_eval_tco(o, env, sfs)
     return Thunk(xs[-1], env)
 
 # %% ../nbs/00_core.ipynb #3442b420
 def _body_expr(body): return body[0] if len(body) == 1 else [Symbol("begin")] + body
 
-def _arity(ps, vs):
-    if len(vs) == len(ps): return vs
-    raise ValueError(f"incorrect number of vs passed (wanted: {len(ps)}, got: {len(vs)})")
-
 def _bind_params(ps, vs):
-    if isinstance(ps, Symbol): return {ps.s: list(vs)}
-    return dict(zip([p.s for p in ps], _arity(ps, vs)))
+    match ps:
+        case Symbol(s=nm): return {nm: list(vs)}
+        case [*fixed, Symbol(s="."), Symbol(s=rest)]:
+            return dict(zip([p.s for p in fixed], vs)) | {rest: list(vs[len(fixed):])}
+        case _:
+            if len(vs) != len(ps): raise ValueError(f"arity mismatch: wanted {len(ps)}, got {len(vs)}")
+            return dict(zip([p.s for p in ps], vs))
 
 # %% ../nbs/00_core.ipynb #1582e36f
-def _sf_if_tco(xs, env, sfs):
+@lisp.sf()
+def _sf_if(xs, env, sfs):
     cond,then_,else_ = xs
     br = else_ if scm_eval_tco(cond, env, sfs) is False else then_
     return Thunk(br, env)
 
 # %% ../nbs/00_core.ipynb #9a549a5a
-def _sf_lambda_tco(xs, env, sfs):
+@lisp.sf()
+def _sf_lambda(xs, env, sfs):
     params, *body = xs
     def procedure(*args):
         return Thunk(_body_expr(body), env.new_frame(_bind_params(params, args)))
     return procedure
 
 # %% ../nbs/00_core.ipynb #cf48dc77
-def _sf_define_tco(xs, env, sfs):
-    def _mkfn(sym, expr): 
+@lisp.sf()
+def _sf_define(xs, env, sfs):
+    def _mkfn(sym, expr):
         if not isinstance(sym, Symbol): raise SyntaxError(f"{sym} must be a symbol")
         if env.is_primitive(sym.s): raise SyntaxError(f"cannot redefine primitive '{sym.s}'")
         env[sym.s] = scm_eval_tco(expr, env, sfs)
         return sym.s
-
     arg0, *rest = xs
     if isinstance(arg0, Symbol): return _mkfn(arg0, _body_expr(rest))
     if isinstance(arg0, list): return _mkfn(arg0[0], [Symbol("lambda"), arg0[1:]] + rest)
 
 # %% ../nbs/00_core.ipynb #d3431242
+@lisp.sf("set!")
 def _sf_set(xs, env, sfs):
     sym, expr = xs
     if not isinstance(sym, Symbol): raise SyntaxError(f"set! argument {sym} must be a symbol")
@@ -172,31 +205,35 @@ def _sf_set(xs, env, sfs):
     return sym.s
 
 # %% ../nbs/00_core.ipynb #8746edea
+@lisp.sf()
 def _sf_let(xs, env, sfs):
     ev = lambda x: scm_eval_tco(x, env, sfs)
     match xs:
         case [Symbol(s=nm), binds, *body]:  # (let loop ((i 0)) body)
             params, inits = zip(*[(o[0], ev(o[1])) for o in binds])
             new_env = env.new_frame({nm: None})
-            new_env[nm] = _sf_lambda_tco([list(params)] + body, new_env, sfs)
+            new_env[nm] = _sf_lambda([list(params)] + body, new_env, sfs)
             return new_env[nm](*inits)
         case [binds, *body]:                # (let ((x 1)) body)
             new_env = env.new_frame({n.s: ev(v) for n,v in binds})
             return Thunk(_body_expr(body), new_env)
 
 # %% ../nbs/00_core.ipynb #e81c3961
+@lisp.sf()
 def _sf_cond(xs, env, sfs):
     for test, *body in xs:
         if _is_sym_eq(test, 'else') or scm_eval_tco(test, env, sfs) is not False:
             return Thunk(_body_expr(body), env)
 
 # %% ../nbs/00_core.ipynb #ca481cda
+@lisp.sf()
 def _sf_and(xs, env, sfs):
     if not xs: return True
     for o in xs[:-1]:
         if scm_eval_tco(o, env, sfs) is False: return False
     return Thunk(xs[-1], env)
 
+@lisp.sf()
 def _sf_or(xs, env, sfs):
     if not xs: return False
     for o in xs[:-1]:
@@ -205,22 +242,15 @@ def _sf_or(xs, env, sfs):
     return Thunk(xs[-1], env)
 
 # %% ../nbs/00_core.ipynb #9070b61c
+@lisp.sf("let*")
 def _sf_let_star(xs, env, sfs):
     binds, *body = xs
     for name, val in binds:
         env = env.new_frame({name.s: scm_eval_tco(val, env, sfs)})
     return Thunk(_body_expr(body), env)
 
-# %% ../nbs/00_core.ipynb #3c7ed442
-def _sf_when(xs, env, sfs):
-    test, *body = xs
-    if scm_eval_tco(test, env, sfs) is not False: return Thunk(_body_expr(body), env)
-
-def _sf_unless(xs, env, sfs):
-    test, *body = xs
-    if scm_eval_tco(test, env, sfs) is False: return Thunk(_body_expr(body), env)
-
 # %% ../nbs/00_core.ipynb #0167198f
+@lisp.sf()
 def _sf_letrec(xs, env, sfs):
     binds, *body = xs
     new_env = env.new_frame({name.s: None for name, _ in binds})
@@ -228,11 +258,13 @@ def _sf_letrec(xs, env, sfs):
     return Thunk(_body_expr(body), new_env)
 
 # %% ../nbs/00_core.ipynb #935f80b2
+@lisp.sf()
 def _sf_fold_left(xs, env, sfs):
     fn, acc, lst = [scm_eval_tco(x, env, sfs) for x in xs]
     for x in lst: acc = _invoke(fn, [acc, x], sfs)
     return acc
 
+@lisp.sf()
 def _sf_fold_right(xs, env, sfs):
     fn, init, lst = [scm_eval_tco(x, env, sfs) for x in xs]
     acc = init
@@ -240,6 +272,7 @@ def _sf_fold_right(xs, env, sfs):
     return acc
 
 # %% ../nbs/00_core.ipynb #d823425c
+@lisp.sf()
 def _sf_case(xs, env, sfs):
     key = scm_eval_tco(xs[0], env, sfs)
     for vals, *body in xs[1:]:
@@ -252,6 +285,7 @@ def _invoke(fn, args, sfs):
     return scm_eval_tco(r.expr, r.env, sfs) if isinstance(r, Thunk) else r
 
 # %% ../nbs/00_core.ipynb #eecbdd8b
+@lisp.sf()
 def _sf_apply(xs, env, sfs):
     fn   = scm_eval_tco(xs[0], env, sfs)
     args = [scm_eval_tco(o, env, sfs) for o in xs[1:-1]]
@@ -259,24 +293,28 @@ def _sf_apply(xs, env, sfs):
     return _invoke(fn, args + list(last), sfs)
 
 # %% ../nbs/00_core.ipynb #e2a3744a
+@lisp.sf()
 def _sf_map(xs, env, sfs):
     fn   = scm_eval_tco(xs[0], env, sfs)
     lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
     return [_invoke(fn, list(args), sfs) for args in zip(*lsts)]
 
 # %% ../nbs/00_core.ipynb #810ac31e
+@lisp.sf()
 def _sf_filter(xs, env, sfs):
     fn  = scm_eval_tco(xs[0], env, sfs)
     lst = scm_eval_tco(xs[1], env, sfs)
     return [x for x in lst if _invoke(fn, [x], sfs) is not False]
 
 # %% ../nbs/00_core.ipynb #a3316139
+@lisp.sf()
 def _sf_for_each(xs, env, sfs):
     fn   = scm_eval_tco(xs[0], env, sfs)
     lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
     for args in zip(*lsts): _invoke(fn, list(args), sfs)
 
 # %% ../nbs/00_core.ipynb #7300b953
+@lisp.sf("macro")
 def _macro(args, env, sfs):
     params, *body = args
     return Macro(lambda *vals: scm_eval_tco(_body_expr(body), env.new_frame(_bind_params(params, vals)), sfs))
@@ -303,43 +341,12 @@ def _qq(x, env, sfs, depth=1):
         return result
     return walk(x)
 
+# %% ../nbs/00_core.ipynb #a689ab1e
+"""
+(define when (macro (cond . body) `(if ,cond (begin ,@body) #f)))
+(define unless (macro (cond . body) `(if ,cond #f (begin ,@body))))
+""" @ lisp
+
 # %% ../nbs/00_core.ipynb #78732c31
+@lisp.sf()
 def _sf_quasiquote(args, env, sfs): return _qq(args[0], env, sfs)
-
-# %% ../nbs/00_core.ipynb #3ddb8440
-class LispCtx:
-    "convenenience lisp context for interop"
-    def __init__(self):
-        self.env = Env(globals(), primitives=_builtin)
-
-    def __rmatmul__(self, s):
-        sfs = {
-            "begin":      _sf_begin_tco,
-            "if":         _sf_if_tco,
-            "cond":       _sf_cond,
-            "case":       _sf_case,
-            "and":        _sf_and,
-            "or":         _sf_or,
-            "when":       _sf_when,
-            "unless":     _sf_unless,
-            "define":     _sf_define_tco,
-            "lambda":     _sf_lambda_tco,
-            "macro":      _macro,
-            "set!":       _sf_set,
-            "let":        _sf_let,
-            "let*":       _sf_let_star,
-            "letrec":     _sf_letrec,
-            "apply":      _sf_apply,
-            "map":        _sf_map,
-            "filter":     _sf_filter,
-            "for-each":   _sf_for_each,
-            "fold-left":  _sf_fold_left,
-            "fold-right": _sf_fold_right,
-            "quote":      _sf_quote,
-            "quasiquote": _sf_quasiquote,
-        }
-        exprs = parse_all(s)
-        expr = exprs[0] if len(exprs) == 1 else [Symbol("begin")] + exprs
-        return scm_eval_tco(expr, self.env, sfs)
-
-lisp = LispCtx()

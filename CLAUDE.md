@@ -30,6 +30,11 @@ To export a single notebook:
 nbdev-export --path fs.ipynb
 ```
 
+Before every commit, run both — export generates the `.py` files, clean strips cell outputs and normalizes notebook metadata:
+```bash
+nbdev-export && nbdev-clean
+```
+
 
 ## Programming rhythm
 

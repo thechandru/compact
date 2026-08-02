@@ -1,0 +1,29 @@
+# compact
+
+> A tiny Scheme interpreter embedded in Python with a shared namespace. Evaluate Scheme from Python via `"(expr)" @ lisp`; Python variables are visible in Lisp, and anything `define`d in Lisp lands back in Python.
+
+`pip install compact-scheme`. Supports: define, set!, lambda, if, cond, case, and, or, begin, quote, let, let*, letrec (named let), quasiquote (` , ,@), macro, when, unless, fold-left, fold-right, map, filter, for-each, apply.
+
+Primitives: `+ - * / = < > <= >= abs min max sqrt expt modulo remainder floor ceiling round truncate cons car cdr list null? pair? list? equal? string-append string-length substring number->string string->number symbol->string string->symbol number? string? symbol? boolean? not error`
+
+```python
+from compact import lisp
+a, b = 3, 4
+"(define c (sqrt (+ (* a a) (* b b))))" @ lisp  # c is now 5.0 in Python
+```
+
+## Docs
+
+- [compact documentation](https://thechandru.github.io/compact/): full docs with examples
+- [Source on GitHub](https://github.com/thechandru/compact): notebooks and implementation
+
+## Examples
+
+- [Quick start and interop](https://thechandru.github.io/compact/): @ lisp operator, define round-trip, TCO, and macros
+
+## Optional
+
+- Tail calls are optimized (TCO) — deep recursion is safe
+- Python callables are directly callable from Lisp and vice versa
+- `lisp['hyphen-name']` looks up symbols with hyphens (invalid as Python identifiers)
+- Primitives cannot be redefined

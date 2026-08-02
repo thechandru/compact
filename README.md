@@ -13,6 +13,10 @@ Scheme is a dialect of Lisp. There is disagreement on the direction of Lisp vari
 
 ## What is compact
 
+`compact` is a library that enables Python programmers to use Lisp inside their Python code. `compact` supports a version of Scheme. `compact` does not aim to comply with any standards (like R5RS, R7RS etc.).
+
+`compact` shares the namespace with Python. Symbols defined in Lisp are accessible in Python. Lisp can also access any symbols defined in Python.
+
 > [!NOTE]
 >
 > **compact** /ˈkäm-ˌpakt/
@@ -26,8 +30,6 @@ Scheme is a dialect of Lisp. There is disagreement on the direction of Lisp vari
 >
 > 1.  something that is compact or compacted
 > 2.  an agreement or covenant between two or more parties
-
-The goal of `compact` is to provide a very simple mechanism for Python programmers to take advantage of Lisp inside their code without fighting multi-language problems. `compact` is a derivative of Scheme. However, this is not a dogmatic implementation that attempts to comply with standards like R5RS, R7RS (small v. large).
 
 A Python program can use Lisp by importing the `lisp` singleton and evaluating Lisp code through it.
 
@@ -49,79 +51,7 @@ a, b = 3, 4
 c
 ```
 
-    KeyError: 'sqrt'
-    [31m---------------------------------------------------------------------------[39m
-    [31mKeyError[39m                                  Traceback (most recent call last)
-    [36mCell[39m[36m [39m[32mIn[10][39m[32m, line 2[39m
-    [32m      1[39m a, b = [32m3[39m, [32m4[39m
-    [32m----> [39m[32m2[39m [33m"(define c (sqrt (+ (* a a) (* b b))))"[39m @ lisp
-    [32m      3[39m c
-
-    [36mFile [39m[32m~/compact/compact/core.py:157[39m, in [36mLispCtx.__rmatmul__[39m[34m(self, s)[39m
-    [32m    155[39m exprs = parse_all(s)
-    [32m    156[39m expr = exprs[[32m0[39m] [38;5;28;01mif[39;00m [38;5;28mlen[39m(exprs) == [32m1[39m [38;5;28;01melse[39;00m [Symbol([33m"[39m[33mbegin[39m[33m"[39m)] + exprs
-    [32m--> [39m[32m157[39m [38;5;28;01mreturn[39;00m [30;43mscm_eval_tco[39;49m[30;43m([39;49m[30;43mexpr[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43mself[39;49m[30;43m.[39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43mself[39;49m[30;43m.[39;49m[30;43msfs[39;49m[30;43m)[39;49m
-
-    [36mFile [39m[32m~/compact/compact/core.py:85[39m, in [36mscm_eval_tco[39m[34m(expr, env, sfs)[39m
-    [32m     83[39m [33m"[39m[33meval but with tail call optimization[39m[33m"[39m
-    [32m     84[39m [38;5;28;01mwhile[39;00m [38;5;28;01mTrue[39;00m:
-    [32m---> [39m[32m85[39m     r = [30;43mscm_eval_one_step[39;49m[30;43m([39;49m[30;43mexpr[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43msfs[39;49m[30;43m)[39;49m
-    [32m     86[39m     [38;5;28;01mif[39;00m [38;5;28misinstance[39m(r, Thunk): expr, env = r.expr, r.env
-    [32m     87[39m     [38;5;28;01melse[39;00m: [38;5;28;01mreturn[39;00m r
-
-    [36mFile [39m[32m~/compact/compact/core.py:75[39m, in [36mscm_eval_one_step[39m[34m(expr, env, sfs)[39m
-    [32m     72[39m [38;5;66;03m# lists[39;00m
-    [32m     73[39m hd, body = expr[[32m0[39m], expr[[32m1[39m:]
-    [32m---> [39m[32m75[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(hd, Symbol) [38;5;129;01mand[39;00m hd.s [38;5;129;01min[39;00m sfs: [38;5;28;01mreturn[39;00m [30;43msfs[39;49m[30;43m[[39;49m[30;43mhd[39;49m[30;43m.[39;49m[30;43ms[39;49m[30;43m][39;49m[30;43m([39;49m[30;43mbody[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43msfs[39;49m[30;43m)[39;49m
-    [32m     76[39m fn = scm_eval_tco(hd, env, sfs)
-    [32m     77[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(fn, Macro): [38;5;28;01mreturn[39;00m Thunk(fn.fn(*body), env)
-
-    [36mFile [39m[32m~/compact/compact/core.py:203[39m, in [36m_sf_define[39m[34m(xs, env, sfs)[39m
-    [32m    201[39m     [38;5;28;01mreturn[39;00m sym.s
-    [32m    202[39m arg0, *rest = xs
-    [32m--> [39m[32m203[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(arg0, Symbol): [38;5;28;01mreturn[39;00m [30;43m_mkfn[39;49m[30;43m([39;49m[30;43marg0[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43m_body_expr[39;49m[30;43m([39;49m[30;43mrest[39;49m[30;43m)[39;49m[30;43m)[39;49m
-    [32m    204[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(arg0, [38;5;28mlist[39m): [38;5;28;01mreturn[39;00m _mkfn(arg0[[32m0[39m], [Symbol([33m"[39m[33mlambda[39m[33m"[39m), arg0[[32m1[39m:]] + rest)
-
-    [36mFile [39m[32m~/compact/compact/core.py:200[39m, in [36m_sf_define.<locals>._mkfn[39m[34m(sym, expr)[39m
-    [32m    198[39m [38;5;28;01mif[39;00m [38;5;129;01mnot[39;00m [38;5;28misinstance[39m(sym, Symbol): [38;5;28;01mraise[39;00m [38;5;167;01mSyntaxError[39;00m([33mf[39m[33m"[39m[38;5;132;01m{[39;00msym[38;5;132;01m}[39;00m[33m must be a symbol[39m[33m"[39m)
-    [32m    199[39m [38;5;28;01mif[39;00m env.is_primitive(sym.s): [38;5;28;01mraise[39;00m [38;5;167;01mSyntaxError[39;00m([33mf[39m[33m"[39m[33mcannot redefine primitive [39m[33m'[39m[38;5;132;01m{[39;00msym.s[38;5;132;01m}[39;00m[33m'[39m[33m"[39m)
-    [32m--> [39m[32m200[39m env[sym.s] = [30;43mscm_eval_tco[39;49m[30;43m([39;49m[30;43mexpr[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43msfs[39;49m[30;43m)[39;49m
-    [32m    201[39m [38;5;28;01mreturn[39;00m sym.s
-
-    [36mFile [39m[32m~/compact/compact/core.py:85[39m, in [36mscm_eval_tco[39m[34m(expr, env, sfs)[39m
-    [32m     83[39m [33m"[39m[33meval but with tail call optimization[39m[33m"[39m
-    [32m     84[39m [38;5;28;01mwhile[39;00m [38;5;28;01mTrue[39;00m:
-    [32m---> [39m[32m85[39m     r = [30;43mscm_eval_one_step[39;49m[30;43m([39;49m[30;43mexpr[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43msfs[39;49m[30;43m)[39;49m
-    [32m     86[39m     [38;5;28;01mif[39;00m [38;5;28misinstance[39m(r, Thunk): expr, env = r.expr, r.env
-    [32m     87[39m     [38;5;28;01melse[39;00m: [38;5;28;01mreturn[39;00m r
-
-    [36mFile [39m[32m~/compact/compact/core.py:76[39m, in [36mscm_eval_one_step[39m[34m(expr, env, sfs)[39m
-    [32m     73[39m hd, body = expr[[32m0[39m], expr[[32m1[39m:]
-    [32m     75[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(hd, Symbol) [38;5;129;01mand[39;00m hd.s [38;5;129;01min[39;00m sfs: [38;5;28;01mreturn[39;00m sfs[hd.s](body, env, sfs)
-    [32m---> [39m[32m76[39m fn = [30;43mscm_eval_tco[39;49m[30;43m([39;49m[30;43mhd[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43msfs[39;49m[30;43m)[39;49m
-    [32m     77[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(fn, Macro): [38;5;28;01mreturn[39;00m Thunk(fn.fn(*body), env)
-    [32m     79[39m [38;5;28;01mreturn[39;00m scm_apply(fn, [scm_eval_tco(o, env, sfs) [38;5;28;01mfor[39;00m o [38;5;129;01min[39;00m body])
-
-    [36mFile [39m[32m~/compact/compact/core.py:85[39m, in [36mscm_eval_tco[39m[34m(expr, env, sfs)[39m
-    [32m     83[39m [33m"[39m[33meval but with tail call optimization[39m[33m"[39m
-    [32m     84[39m [38;5;28;01mwhile[39;00m [38;5;28;01mTrue[39;00m:
-    [32m---> [39m[32m85[39m     r = [30;43mscm_eval_one_step[39;49m[30;43m([39;49m[30;43mexpr[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43menv[39;49m[30;43m,[39;49m[30;43m [39;49m[30;43msfs[39;49m[30;43m)[39;49m
-    [32m     86[39m     [38;5;28;01mif[39;00m [38;5;28misinstance[39m(r, Thunk): expr, env = r.expr, r.env
-    [32m     87[39m     [38;5;28;01melse[39;00m: [38;5;28;01mreturn[39;00m r
-
-    [36mFile [39m[32m~/compact/compact/core.py:69[39m, in [36mscm_eval_one_step[39m[34m(expr, env, sfs)[39m
-    [32m     67[39m [33m"[39m[33meval-uate lisp expressions given an environment and handlers for special forms[39m[33m"[39m
-    [32m     68[39m [38;5;66;03m# Atoms[39;00m
-    [32m---> [39m[32m69[39m [38;5;28;01mif[39;00m [38;5;28misinstance[39m(expr, Symbol): [38;5;28;01mreturn[39;00m [30;43menv[39;49m[30;43m[[39;49m[30;43mexpr[39;49m[30;43m.[39;49m[30;43ms[39;49m[30;43m][39;49m
-    [32m     70[39m [38;5;28;01mif[39;00m [38;5;129;01mnot[39;00m [38;5;28misinstance[39m(expr, [38;5;28mlist[39m): [38;5;28;01mreturn[39;00m expr
-    [32m     72[39m [38;5;66;03m# lists[39;00m
-
-    [36mFile [39m[32m~/compact/compact/core.py:28[39m, in [36mEnv.__getitem__[39m[34m(self, k)[39m
-    [32m     26[39m     [38;5;28;01mif[39;00m k [38;5;129;01min[39;00m s.primitives: [38;5;28;01mreturn[39;00m s.primitives[k]
-    [32m     27[39m     [38;5;28;01mreturn[39;00m s.d[k]
-    [32m---> [39m[32m28[39m [38;5;28;01mraise[39;00m [38;5;167;01mKeyError[39;00m(k)
-
-    [31mKeyError[39m: 'sqrt'
+    5.0
 
 One stated barrier to wider adoption of Lisp is limited library availability (say, compared to Python). `compact` sidesteps the library problem by embedding Lisp inside Python via a shared namespace. Specifically, `compact` shares the calling module’s globals().
 
@@ -132,16 +62,11 @@ pi = math.pi
 sorted(map(area, [1, 2, 3, 4, 5]))
 ```
 
-    NameError: name 'area' is not defined
-    [31m---------------------------------------------------------------------------[39m
-    [31mNameError[39m                                 Traceback (most recent call last)
-    [36mCell[39m[36m [39m[32mIn[11][39m[32m, line 4[39m
-    [32m      1[39m [38;5;28;01mimport[39;00m math
-    [32m      2[39m pi = math.pi
-    [32m      3[39m [33m"(define (area r) (* pi r r))"[39m @ lisp
-    [32m----> [39m[32m4[39m sorted(map(area, [[32m1[39m, [32m2[39m, [32m3[39m, [32m4[39m, [32m5[39m]))
-
-    [31mNameError[39m: name 'area' is not defined
+    [3.141592653589793,
+     12.566370614359172,
+     28.274333882308138,
+     50.26548245743669,
+     78.53981633974483]
 
 Since Lisp programs rely heavily on recursion, it is common to implement *Tail Call Optimization* (TCO). This effectively converts tail-recursive calls into an iteration, avoiding stack overflow.
 
@@ -151,8 +76,16 @@ Since Lisp programs rely heavily on recursion, it is common to implement *Tail C
   (if (= n 0) acc
       (factorial (- n 1) (* n acc))))
 """ @ lisp
-factorial(10000, 1)
+
+l10k = factorial(10000, 1)
+
+import math
+m10k = math.factorial(10000)
+
+l10k == m10k
 ```
+
+    True
 
 As mentioned earlier, one of the powerful aspects of Lisp is the ability to invent syntax. A good example is looping constructs - by default we don’t provide any. If you needed a special form of iterator, you could implement it as a Lisp macro and it would be indistinguishable from the rest of the language.
 
@@ -171,6 +104,8 @@ As mentioned earlier, one of the powerful aspects of Lisp is the ability to inve
     acc) 
 """ @ lisp
 ```
+
+    10
 
 ## Install
 

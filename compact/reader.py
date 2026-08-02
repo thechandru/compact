@@ -43,7 +43,6 @@ def lexer(s): return [t for t in re.findall(TOKEN_RE, s) if not t.startswith(';'
 def parser(toks):
     if not toks: raise SyntaxError("malformed list: unexpected EOF")
     
-
     t = toks.pop(0)
     if t == ')': raise SyntaxError("malformed list: unexpected )")
     if t == '(':

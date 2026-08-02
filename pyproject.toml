@@ -31,3 +31,4 @@ version = {attr = "compact.__version__"}
 include = ["compact"]
 
 [tool.nbdev]
+lib_path = "compact"

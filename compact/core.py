@@ -7,8 +7,9 @@ Docs: https://thechandru.github.io/compact/core.html.md"""
 # %% auto #0
 __all__ = ['lisp', 'Env', 'scm_apply', 'Procedure', 'scm_eval_one_step', 'scm_eval_tco', 'LispCtx']
 
-# %% ../nbs/00_core.ipynb #e086d109
+# %% ../nbs/00_core.ipynb #dd1b83e1
 import math, operator as op
+import inspect
 from fastcore.basics import store_attr, first, last
 
 from .reader import *
@@ -86,7 +87,7 @@ def scm_eval_tco(expr, env, sfs=()):
         if isinstance(r, Thunk): expr, env = r.expr, r.env
         else: return r
 
-# %% ../nbs/00_core.ipynb #f0091913
+# %% ../nbs/00_core.ipynb #ae30bc6b
 def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {' '.join(map(repr, irritants))}")
 def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
 def _scm_div(x, *xs): return 1/x if not xs else x / math.prod(xs)
@@ -131,7 +132,7 @@ _builtin |= {
     "floor": math.floor, "ceiling": math.ceil,
     "round": round, "truncate": math.trunc,
     "abs": abs, "min": min, "max": max,
-    "expt": pow, "modulo": op.mod,
+    "sqrt": math.sqrt, "expt": pow, "modulo": op.mod,
     "remainder": lambda x,y: x - int(x/y)*y,
 }
 _builtin |= {"symbol->string": lambda x: x.s, "string->symbol": Symbol,
@@ -152,9 +153,15 @@ class LispCtx:
         return reg
 
     def __rmatmul__(self, s):
+        caller_globals = inspect.stack()[1][0].f_globals
+        env = Env(caller_globals, primitives=self.env.primitives, parent=self.env)
         exprs = parse_all(s)
         expr = exprs[0] if len(exprs) == 1 else [Symbol("begin")] + exprs
-        return scm_eval_tco(expr, self.env, self.sfs)
+        return scm_eval_tco(expr, env, self.sfs)
+
+    def register_magic(self):        
+        from IPython.core.magic import register_cell_magic
+        register_cell_magic('lisp')(lambda line, cell: cell @ self)
 
 lisp = LispCtx()
 
@@ -220,7 +227,8 @@ def _sf_let(xs, env, sfs):
     ev = lambda x: scm_eval_tco(x, env, sfs)
     match xs:
         case [Symbol(s=nm), binds, *body]:  # (let loop ((i 0)) body)
-            params, inits = zip(*[(o[0], ev(o[1])) for o in binds])
+            pairs = [(o[0], ev(o[1])) for o in binds]
+            params, inits = zip(*pairs) if pairs else ([], [])
             new_env = env.new_frame({nm: None})
             new_env[nm] = _sf_lambda([list(params)] + body, new_env, sfs)
             return new_env[nm](*inits)

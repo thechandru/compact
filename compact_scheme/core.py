@@ -7,8 +7,9 @@ Docs: https://thechandru.github.io/compact/core.html.md"""
 # %% auto #0
 __all__ = ['lisp', 'Env', 'scm_apply', 'Procedure', 'scm_eval_one_step', 'scm_eval_tco', 'LispCtx']
 
-# %% ../nbs/00_core.ipynb #e086d109
-import math, operator as op, inspect
+# %% ../nbs/00_core.ipynb #dd1b83e1
+import math, operator as op
+import inspect
 from fastcore.basics import store_attr, first, last
 
 from compact.reader import *
@@ -86,7 +87,7 @@ def scm_eval_tco(expr, env, sfs=()):
         if isinstance(r, Thunk): expr, env = r.expr, r.env
         else: return r
 
-# %% ../nbs/00_core.ipynb #f0091913
+# %% ../nbs/00_core.ipynb #ae30bc6b
 def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {' '.join(map(repr, irritants))}")
 def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
 def _scm_div(x, *xs): return 1/x if not xs else x / math.prod(xs)

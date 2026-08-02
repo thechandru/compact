@@ -107,6 +107,24 @@ As mentioned earlier, one of the powerful aspects of Lisp is the ability to inve
 
     10
 
+Lisp symbols with hyphens are not valid Python identifiers. `lisp[name]` looks up any symbol in the Lisp environment — including user-defined ones.
+
+``` python
+import math
+pi = math.pi
+
+"""
+(define (sphere-volume r)  (* (/ 4.0 3) pi r r r))
+(define (sphere-surface r) (* 4 pi r r))
+""" @ lisp
+
+# lisp symbols can use characters that are disallowed in Python
+# the can be accessed using lisp[...]
+lisp['sphere-volume'](5), lisp['sphere-surface'](5)
+```
+
+    (523.5987755982989, 314.1592653589793)
+
 ## Install
 
 ``` sh

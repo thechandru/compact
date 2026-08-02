@@ -159,6 +159,11 @@ class LispCtx:
         expr = exprs[0] if len(exprs) == 1 else [Symbol("begin")] + exprs
         return scm_eval_tco(expr, env, self.sfs)
 
+    def __getitem__(self, k):
+        caller_globals = inspect.stack()[1][0].f_globals
+        env = Env(caller_globals, primitives=self.env.primitives, parent=self.env)
+        return env[k]
+
     def register_magic(self):        
         from IPython.core.magic import register_cell_magic
         register_cell_magic('lisp')(lambda line, cell: cell @ self)

@@ -7,3 +7,8 @@ website:
   description: "Tiny implementation of scheme in Python"
   repo-branch: main
   repo-url: "https://github.com/thechandru/compact"
+
+format-links:
+  - html
+  - format: commonmark
+    text: Markdown

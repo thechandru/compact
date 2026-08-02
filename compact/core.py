@@ -139,7 +139,7 @@ _builtin |= {"symbol->string": lambda x: x.s, "string->symbol": Symbol,
     "equal?": _scm_equal,
     "not": lambda x: x is False, "error": _scm_error}
 
-# %% ../nbs/00_core.ipynb #60d1560a
+# %% ../nbs/00_core.ipynb #c1c58be5
 class LispCtx:
     "convenience lisp context for interop"
     def __init__(self):
@@ -168,6 +168,7 @@ class LispCtx:
         from IPython.core.magic import register_cell_magic
         register_cell_magic('lisp')(lambda line, cell: cell @ self)
 
+# %% ../nbs/00_core.ipynb #0c7f610d
 lisp = LispCtx()
 
 # %% ../nbs/00_core.ipynb #cf72bbe6

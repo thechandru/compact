@@ -48,8 +48,12 @@ class Env:
 
 # %% ../nbs/00_core.ipynb #48103d34
 def scm_apply(fn, args):
+    kw = {}
+    if len(args) > 0 and isinstance(args[-1], KwArgs): 
+        kw.update(args[-1])
+        args = args[:-1]
     if isinstance(fn, Procedure): return fn._thunk(*args)
-    return fn(*args)
+    return fn(*args, **kw)
 
 # %% ../nbs/00_core.ipynb #52f0b557
 class Procedure:
@@ -364,3 +368,15 @@ def _qq(x, env, sfs, depth=1):
 # %% ../nbs/00_core.ipynb #78732c31
 @lisp.sf()
 def _sf_quasiquote(args, env, sfs): return _qq(args[0], env, sfs)
+
+# %% ../nbs/00_core.ipynb #276cf58f
+@lisp.sf("@")
+def _sf_at(args, env, sfs):
+    return KwArgs({k.s: scm_eval_tco(v, env, sfs) for k,v in args})
+
+# %% ../nbs/00_core.ipynb #1a2009da
+@lisp.sf("->")
+def _sf_dot(args, env, sfs):
+    obj_expr, m = args
+    obj = scm_eval_tco(obj_expr, env, sfs)
+    return getattr(obj, m.s)

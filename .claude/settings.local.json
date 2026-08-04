@@ -4,7 +4,12 @@
       "Bash(sic *)",
       "WebFetch(domain:thechandru.github.io)",
       "WebFetch(domain:fastht.ml)",
-      "WebFetch(domain:fastcore.fast.ai)"
+      "WebFetch(domain:fastcore.fast.ai)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:llmstxt.org)",
+      "WebFetch(domain:www.fastht.ml)",
+      "Bash(python3 *)",
+      "Bash(nbdev-export *)"
     ]
   }
 }

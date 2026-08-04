@@ -87,25 +87,50 @@ def scm_eval_tco(expr, env, sfs=()):
         if isinstance(r, Thunk): expr, env = r.expr, r.env
         else: return r
 
-# %% ../nbs/00_core.ipynb #ae30bc6b
+# %% ../nbs/00_core.ipynb #49ede573
 def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {' '.join(map(repr, irritants))}")
+
+# %% ../nbs/00_core.ipynb #1997c865
 def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
 def _scm_div(x, *xs): return 1/x if not xs else x / math.prod(xs)
+
+# %% ../nbs/00_core.ipynb #04ffd617
 def _is_num(x): return not isinstance(x, bool) and isinstance(x, (int, float, complex))
 def _is_sym(x): return isinstance(x, Symbol)
 def _is_sym_eq(x, s): return _is_sym(x) and x.s == s
 def _is_list(x): return isinstance(x, list)
 def _is_pair(x): return isinstance(x, list) and bool(x)
+
+# %% ../nbs/00_core.ipynb #a620f92a
 def _scm_equal(x, y):
     if type(x) != type(y): return False
     if isinstance(x, list): return len(x) == len(y) and all(_scm_equal(a,b) for a,b in zip(x,y))
     return x == y
+
+# %% ../nbs/00_core.ipynb #473e5663
 def _str2num(s):
     try: return int(s)
     except ValueError:
         try: return float(s)
         except ValueError: return False
 
+# %% ../nbs/00_core.ipynb #1b2f07bd
+def _scm_for_each(fn, *lsts):
+    for args in zip(*lsts): fn(*args)
+
+# %% ../nbs/00_core.ipynb #6b1d1da8
+def _scm_fold_left(fn, init, lst):
+    acc = init
+    for x in lst: acc = fn(acc, x)
+    return acc
+
+# %% ../nbs/00_core.ipynb #28605b7d
+def _scm_fold_right(fn, init, lst):
+    acc = init
+    for x in reversed(lst): acc = fn(x, acc)
+    return acc
+
+# %% ../nbs/00_core.ipynb #8be2ea73
 _builtin = {
     "+": lambda *xs: sum(xs), 
     "*": lambda *xs: math.prod(xs),
@@ -138,6 +163,14 @@ _builtin |= {
 _builtin |= {"symbol->string": lambda x: x.s, "string->symbol": Symbol,
     "equal?": _scm_equal,
     "not": lambda x: x is False, "error": _scm_error}
+_builtin |= {
+    "apply": lambda fn, *args: fn(*args[:-1], *args[-1]),
+    "map": lambda fn, *lsts: [fn(*args) for args in zip(*lsts)],
+    "filter": lambda fn, lst: [x for x in lst if fn(x) is not False],
+    "for-each": _scm_for_each,
+    "fold-left": _scm_fold_left,
+    "fold-right": _scm_fold_right,
+}
 
 # %% ../nbs/00_core.ipynb #c1c58be5
 class LispCtx:
@@ -166,7 +199,13 @@ class LispCtx:
 
     def register_magic(self):        
         from IPython.core.magic import register_cell_magic
-        register_cell_magic('lisp')(lambda line, cell: cell @ self)
+        caller_globals = inspect.stack()[1][0].f_globals
+        def _magic(line, cell):
+            exprs = parse_all(cell)
+            expr = exprs[0] if len(exprs) == 1 else [Symbol("begin")] + exprs
+            env = Env(caller_globals, primitives=self.env.primitives, parent=self.env)
+            return scm_eval_tco(expr, env, self.sfs)
+        register_cell_magic('lisp')(_magic)
 
 # %% ../nbs/00_core.ipynb #0c7f610d
 lisp = LispCtx()
@@ -281,61 +320,12 @@ def _sf_letrec(xs, env, sfs):
     for name, val in binds: new_env[name.s] = scm_eval_tco(val, new_env, sfs)
     return Thunk(_body_expr(body), new_env)
 
-# %% ../nbs/00_core.ipynb #935f80b2
-@lisp.sf()
-def _sf_fold_left(xs, env, sfs):
-    fn, acc, lst = [scm_eval_tco(x, env, sfs) for x in xs]
-    for x in lst: acc = _invoke(fn, [acc, x], sfs)
-    return acc
-
-@lisp.sf()
-def _sf_fold_right(xs, env, sfs):
-    fn, init, lst = [scm_eval_tco(x, env, sfs) for x in xs]
-    acc = init
-    for x in reversed(lst): acc = _invoke(fn, [x, acc], sfs)
-    return acc
-
 # %% ../nbs/00_core.ipynb #d823425c
 @lisp.sf()
 def _sf_case(xs, env, sfs):
     key = scm_eval_tco(xs[0], env, sfs)
     for vals, *body in xs[1:]:
         if _is_sym_eq(vals, 'else') or key in vals: return Thunk(_body_expr(body), env)
-
-# %% ../nbs/00_core.ipynb #6115ce5e
-def _invoke(fn, args, sfs):
-    "call fn resolving any TCO thunk"
-    r = scm_apply(fn, args)
-    return scm_eval_tco(r.expr, r.env, sfs) if isinstance(r, Thunk) else r
-
-# %% ../nbs/00_core.ipynb #eecbdd8b
-@lisp.sf()
-def _sf_apply(xs, env, sfs):
-    fn   = scm_eval_tco(xs[0], env, sfs)
-    args = [scm_eval_tco(o, env, sfs) for o in xs[1:-1]]
-    last = scm_eval_tco(xs[-1], env, sfs)
-    return _invoke(fn, args + list(last), sfs)
-
-# %% ../nbs/00_core.ipynb #e2a3744a
-@lisp.sf()
-def _sf_map(xs, env, sfs):
-    fn   = scm_eval_tco(xs[0], env, sfs)
-    lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
-    return [_invoke(fn, list(args), sfs) for args in zip(*lsts)]
-
-# %% ../nbs/00_core.ipynb #810ac31e
-@lisp.sf()
-def _sf_filter(xs, env, sfs):
-    fn  = scm_eval_tco(xs[0], env, sfs)
-    lst = scm_eval_tco(xs[1], env, sfs)
-    return [x for x in lst if _invoke(fn, [x], sfs) is not False]
-
-# %% ../nbs/00_core.ipynb #a3316139
-@lisp.sf()
-def _sf_for_each(xs, env, sfs):
-    fn   = scm_eval_tco(xs[0], env, sfs)
-    lsts = [scm_eval_tco(l, env, sfs) for l in xs[1:]]
-    for args in zip(*lsts): _invoke(fn, list(args), sfs)
 
 # %% ../nbs/00_core.ipynb #7300b953
 @lisp.sf("macro")

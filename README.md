@@ -130,3 +130,9 @@ lisp['sphere-volume'](5), lisp['sphere-surface'](5)
 ``` sh
 pip install compact-scheme
 ```
+
+## LLM reference
+
+For LLM-assisted development, a compact reference of supported forms, primitives, and usage is available at [llms.txt](https://thechandru.github.io/compact/llms_txt.html).
+
+For a full walkthrough of supported forms and primitives with examples, see [core examples](examples/core.ipynb).

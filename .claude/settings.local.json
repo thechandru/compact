@@ -9,7 +9,10 @@
       "WebFetch(domain:llmstxt.org)",
       "WebFetch(domain:www.fastht.ml)",
       "Bash(python3 *)",
-      "Bash(nbdev-export *)"
+      "Bash(nbdev-export *)",
+      "Bash(gh run *)",
+      "Read(//app/data/compact/compact/examples/**)",
+      "Read(//app/data/compact/compact/**)"
     ]
   }
 }

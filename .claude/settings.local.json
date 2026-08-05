@@ -12,7 +12,8 @@
       "Bash(nbdev-export *)",
       "Bash(gh run *)",
       "Read(//app/data/compact/compact/examples/**)",
-      "Read(//app/data/compact/compact/**)"
+      "Read(//app/data/compact/compact/**)",
+      "Read(//app/data/compact/**)"
     ]
   }
 }

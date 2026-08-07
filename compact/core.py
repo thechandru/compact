@@ -134,6 +134,11 @@ def _scm_fold_right(fn, init, lst):
     for x in reversed(lst): acc = fn(x, acc)
     return acc
 
+# %% ../nbs/00_core.ipynb #b2bf7f43
+def _cons(x, y):
+    if not isinstance(y, list): raise TypeError(f"cons: second argument must be a list, got {type(y).__name__}")
+    return [x] + y
+
 # %% ../nbs/00_core.ipynb #8be2ea73
 _builtin = {
     "+": lambda *xs: sum(xs), 
@@ -148,8 +153,10 @@ _builtin |= {
     "null?": lambda x: x == [], "pair?": _is_pair, "list?": _is_list,
 }
 _builtin |= {
-    "list": lambda *xs: list(xs), "cons": lambda x,y: [x] + y,
-    "car": lambda x: x[0], "cdr": lambda x: x[1:],
+    "list": lambda *xs: list(xs), 
+    "cons": _cons,
+    "car": lambda x: x[0], 
+    "cdr": lambda x: x[1:],
 }
 _builtin |= {
     "string-append": lambda *xs: "".join(xs),

@@ -381,6 +381,13 @@ def _sf_quasiquote(args, env, sfs): return _qq(args[0], env, sfs)
 def _sf_at(args, env, sfs):
     return KwArgs({k.s: scm_eval_tco(v, env, sfs) for k,v in args})
 
+# %% ../nbs/00_core.ipynb #a9768b39
+@lisp.sf("$")
+def _sf_dollar(args, env, sfs):
+    sym = scm_eval_tco(args[0], env, sfs)
+    if not isinstance(sym, Symbol): raise TypeError(f"$: expected symbol, got {type(sym).__name__}")
+    return env[sym.s]
+
 # %% ../nbs/00_core.ipynb #1a2009da
 @lisp.sf("->")
 def _sf_dot(args, env, sfs):

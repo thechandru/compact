@@ -27,3 +27,40 @@ a, b = 3, 4
 - Python callables are directly callable from Lisp and vice versa
 - `lisp['hyphen-name']` looks up symbols with hyphens (invalid as Python identifiers)
 - Primitives cannot be redefined
+
+## Deviations from standard Scheme
+
+**Lists are Python lists, not cons cells**
+- No dotted pairs: `(cons 1 2)` raises a `TypeError`; second arg to `cons` must be a list
+- No linked-list performance characteristics
+
+**No `eval`**
+- Use `($ expr)` instead — looks up a symbol in the current env (symbol deref only, not full eval)
+
+**Macros are not hygienic**
+- `(macro (params) body)` is procedural and unhygienic; variable capture is possible
+- No `define-syntax` / `syntax-rules`
+
+**Primitives cannot be redefined**
+- `(define + ...)` raises `SyntaxError`
+
+**`equal?` is type-strict**
+- `(equal? 1 1.0)` returns `#f`
+
+**No char or vector types**
+- No `#\a` character literals, `char?`, `char->integer`, etc.
+- No `vector`, `vector-ref`, `vector-set!`, etc.
+
+**No standard I/O**
+- No `display`, `read`, `write`, `newline` — use Python interop for I/O
+
+**No `call/cc` or multiple values**
+- No `call-with-current-continuation`, `values`, or `call-with-values`
+
+**`not` treats only `#f` as false**
+- `(not 0)` → `#f`, `(not '())` → `#f` — correct Scheme semantics, but unlike Python
+
+**Python interop special forms (non-standard)**
+- `(@ (k v) …)` — build a kwargs dict; passed as `**kwargs` to any Python callable
+- `(-> obj attr)` — access a Python attribute or bound method
+- `($ expr)` — evaluate `expr` to a symbol, return its value from the current env

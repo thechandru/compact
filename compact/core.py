@@ -246,7 +246,7 @@ def _bind_params(ps, vs):
 # %% ../nbs/00_core.ipynb #1582e36f
 @lisp.sf()
 def _sf_if(xs, env, sfs):
-    cond,then_,else_ = xs
+    cond, then_, else_ = xs if len(xs) == 3 else xs + [None]
     br = else_ if scm_eval_tco(cond, env, sfs) is False else then_
     return Thunk(br, env)
 

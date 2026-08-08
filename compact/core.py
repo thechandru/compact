@@ -296,7 +296,10 @@ def _sf_let(xs, env, sfs):
 @lisp.sf()
 def _sf_cond(xs, env, sfs):
     for test, *body in xs:
-        if _is_sym_eq(test, 'else') or scm_eval_tco(test, env, sfs) is not False:
+        if _is_sym_eq(test, 'else'): return Thunk(_body_expr(body), env)
+        val = scm_eval_tco(test, env, sfs)
+        if val is not False:
+            if len(body) == 2 and _is_sym_eq(body[0], '=>'): return scm_apply(scm_eval_tco(body[1], env, sfs), [val])
             return Thunk(_body_expr(body), env)
 
 # %% ../nbs/00_core.ipynb #ca481cda

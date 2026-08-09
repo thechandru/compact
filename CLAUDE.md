@@ -129,7 +129,9 @@ Key functions:
 - `msg_del_lines(id, start, end)` - delete line range
 - `msg_python(id, code)` - edit content via Python (`text` var holds content, last expr is new content)
 - `del_msg(id, dname)` - delete message
-- `update_msg(id, is_exported=1, dname)` - mark a cell as exported (use this, not add_msg)
+- `update_msg(id, exported=1, dname)` - mark an existing cell as exported
+
+**Marking cells as exported:** dialogs use cell metadata, not `#| export` comments. Pass `exported=1` to `add_msg` when creating, or `update_msg(id, exported=1)` to mark an existing cell. Never add `#| export` as a comment in the cell content.
 
 Always call `view_msg(id)` immediately before any line-based edit - never rely on line numbers from earlier in the conversation. To verify a cell was exported correctly, use `view_msg(id)` - never `grep` or `json.load` on the `.ipynb` file directly.
 

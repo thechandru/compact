@@ -14,6 +14,10 @@ from fastcore.basics import store_attr, first, last
 
 from .reader import *
 from .types import *
+from .primitives import ls
+
+# %% ../nbs/00_core.ipynb #882a7250
+def _is_sym_eq(x, s): return isinstance(x, Symbol) and x.s == s
 
 # %% ../nbs/00_core.ipynb #4b978579
 class Env:
@@ -91,103 +95,11 @@ def scm_eval_tco(expr, env, sfs=()):
         if isinstance(r, Thunk): expr, env = r.expr, r.env
         else: return r
 
-# %% ../nbs/00_core.ipynb #49ede573
-def _scm_error(msg, *irritants): raise Exception(msg if not irritants else f"{msg} {' '.join(map(repr, irritants))}")
-
-# %% ../nbs/00_core.ipynb #1997c865
-def _scm_sub(x, *xs): return x - sum(xs) if xs else -x
-def _scm_div(x, *xs): return 1/x if not xs else x / math.prod(xs)
-
-# %% ../nbs/00_core.ipynb #04ffd617
-def _is_num(x): return not isinstance(x, bool) and isinstance(x, (int, float, complex))
-def _is_sym(x): return isinstance(x, Symbol)
-def _is_sym_eq(x, s): return _is_sym(x) and x.s == s
-def _is_list(x): return isinstance(x, list)
-def _is_pair(x): return isinstance(x, list) and bool(x)
-
-# %% ../nbs/00_core.ipynb #a620f92a
-def _scm_equal(x, y):
-    if type(x) != type(y): return False
-    if isinstance(x, list): return len(x) == len(y) and all(_scm_equal(a,b) for a,b in zip(x,y))
-    return x == y
-
-# %% ../nbs/00_core.ipynb #473e5663
-def _str2num(s):
-    try: return int(s)
-    except ValueError:
-        try: return float(s)
-        except ValueError: return False
-
-# %% ../nbs/00_core.ipynb #1b2f07bd
-def _scm_for_each(fn, *lsts):
-    for args in zip(*lsts): fn(*args)
-
-# %% ../nbs/00_core.ipynb #6b1d1da8
-def _scm_fold_left(fn, init, lst):
-    acc = init
-    for x in lst: acc = fn(acc, x)
-    return acc
-
-# %% ../nbs/00_core.ipynb #28605b7d
-def _scm_fold_right(fn, init, lst):
-    acc = init
-    for x in reversed(lst): acc = fn(x, acc)
-    return acc
-
-# %% ../nbs/00_core.ipynb #b2bf7f43
-def _cons(x, y):
-    if not isinstance(y, list): raise TypeError(f"cons: second argument must be a list, got {type(y).__name__}")
-    return [x] + y
-
-# %% ../nbs/00_core.ipynb #8be2ea73
-_builtin = {
-    "+": lambda *xs: sum(xs), 
-    "*": lambda *xs: math.prod(xs),
-    "-": _scm_sub, "/": _scm_div,
-    "=": lambda x,y: _is_num(x) and _is_num(y) and x == y,
-    "<": op.lt, ">": op.gt, "<=": op.le, ">=": op.ge,
-}
-_builtin |= {
-    "number?": _is_num, "string?": lambda x: isinstance(x, str),
-    "symbol?": _is_sym, "boolean?": lambda x: isinstance(x, bool),
-    "null?": lambda x: x == [], "pair?": _is_pair, "list?": _is_list,
-}
-_builtin |= {
-    "list": lambda *xs: list(xs), 
-    "cons": _cons,
-    "car": lambda x: x[0], 
-    "cdr": lambda x: x[1:],
-}
-_builtin |= {
-    "string-append": lambda *xs: "".join(xs),
-    "string-length": len,
-    "substring": lambda s,i,j: s[i:j],
-    "number->string": str, "string->number": _str2num,
-}
-_builtin |= {
-    "floor": math.floor, "ceiling": math.ceil,
-    "round": round, "truncate": math.trunc,
-    "abs": abs, "min": min, "max": max,
-    "sqrt": math.sqrt, "expt": pow, "modulo": op.mod,
-    "remainder": lambda x,y: x - int(x/y)*y,
-}
-_builtin |= {"symbol->string": lambda x: x.s, "string->symbol": Symbol,
-    "equal?": _scm_equal,
-    "not": lambda x: x is False, "error": _scm_error}
-_builtin |= {
-    "apply": lambda fn, *args: fn(*args[:-1], *args[-1]),
-    "map": lambda fn, *lsts: [fn(*args) for args in zip(*lsts)],
-    "filter": lambda fn, lst: [x for x in lst if fn(x) is not False],
-    "for-each": _scm_for_each,
-    "fold-left": _scm_fold_left,
-    "fold-right": _scm_fold_right,
-}
-
 # %% ../nbs/00_core.ipynb #c1c58be5
 class LispCtx:
     "convenience lisp context for interop"
     def __init__(self):
-        self.env = Env(globals(), primitives=_builtin)
+        self.env = Env(globals(), primitives=ls())
         self.sfs = {}
 
     def sf(self, nm=None):
@@ -301,6 +213,14 @@ def _sf_cond(xs, env, sfs):
         if val is not False:
             if len(body) == 2 and _is_sym_eq(body[0], '=>'): return scm_apply(scm_eval_tco(body[1], env, sfs), [val])
             return Thunk(_body_expr(body), env)
+
+# %% ../nbs/00_core.ipynb #1fe4cb0e
+@lisp.sf("apply")
+def _sf_apply(xs, env, sfs):
+    fn = scm_eval_tco(xs[0], env, sfs)
+    args = [scm_eval_tco(o, env, sfs) for o in xs[1:-1]]
+    last = scm_eval_tco(xs[-1], env, sfs)
+    return scm_apply(fn, args + list(last))
 
 # %% ../nbs/00_core.ipynb #ca481cda
 @lisp.sf()

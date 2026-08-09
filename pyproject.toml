@@ -32,3 +32,4 @@ include = ["compact"]
 
 [tool.nbdev]
 lib_path = "compact"
+allowed_metadata_keys = "solveit"

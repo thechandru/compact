@@ -87,7 +87,6 @@ def scm_eval_one_step(expr, env, sfs=()):
 
     return scm_apply(fn, [scm_eval_tco(o, env, sfs) for o in body])
 
-# %% ../nbs/00_core.ipynb #12289072
 def scm_eval_tco(expr, env, sfs=()):
     "eval but with tail call optimization"
     while True:

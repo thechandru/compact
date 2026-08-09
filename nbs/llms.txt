@@ -2,9 +2,9 @@
 
 > A tiny Scheme interpreter embedded in Python with a shared namespace. Evaluate Scheme from Python via `"(expr)" @ lisp`; Python variables are visible in Lisp, and anything `define`d in Lisp lands back in Python.
 
-`pip install compact-scheme`. Supports: define, set!, lambda, if, cond, case, and, or, begin, quote, let, let*, letrec (named let), quasiquote (` , ,@), macro, when, unless, fold-left, fold-right, map, filter, for-each, apply.
+`pip install compact-scheme`. Supports: define, set!, lambda, if, cond, case, and, or, begin, quote, let, let*, letrec, named let, quasiquote (` , ,@), macro, when, unless, fold-left, fold-right, map, filter, for-each, apply.
 
-Primitives: `+ - * / = < > <= >= abs min max sqrt expt modulo remainder floor ceiling round truncate cons car cdr list null? pair? list? equal? string-append string-length substring number->string string->number symbol->string string->symbol number? string? symbol? boolean? not error`
+Primitives: `+ - * / = < > <= >= abs min max sqrt expt modulo remainder floor ceiling round truncate cons car cdr list null? pair? list? equal? string-append string-length substring number->string string->number symbol->string string->symbol number? string? symbol? boolean? not error map filter for-each fold-left fold-right`
 
 ```python
 from compact import lisp
@@ -23,10 +23,15 @@ a, b = 3, 4
 
 ## Optional
 
-- Tail calls are optimized (TCO) — deep recursion is safe
+- Tail calls are optimized (TCO) -- deep recursion is safe
 - Python callables are directly callable from Lisp and vice versa
 - `lisp['hyphen-name']` looks up symbols with hyphens (invalid as Python identifiers)
 - Primitives cannot be redefined
+- `cond` supports `=>` arrow form: `(cond (test => proc))` passes the test value to proc -- `(cond ((assv k lst) => cdr))` returns the cdr of the matching pair
+- `apply` spreads its last arg as positional args: `(apply + '(1 2 3))` -> `6`; `(apply + 1 2 '(3 4))` -> `10`
+- Named let for loops: `(let loop ((i 0)) (if (< i 3) (loop (+ i 1)) i))` -> `3`
+- `letrec` for mutually recursive bindings: `(letrec ((even? (lambda (n) (if (= n 0) #t (odd? (- n 1))))) (odd? (lambda (n) (if (= n 0) #f (even? (- n 1)))))) (even? 4))` -> `#t`
+- Variadic lambda: `(lambda args body)` collects all args as a list; `(lambda (x . rest) body)` for fixed head with rest -- `((lambda (x . rest) rest) 1 2 3)` -> `(2 3)`
 
 ## Deviations from standard Scheme
 
@@ -35,7 +40,7 @@ a, b = 3, 4
 - No linked-list performance characteristics
 
 **No `eval`**
-- Use `($ expr)` instead — looks up a symbol in the current env (symbol deref only, not full eval)
+- Use `($ expr)` instead -- looks up a symbol in the current env (symbol deref only, not full eval)
 
 **Macros are not hygienic**
 - `(macro (params) body)` is procedural and unhygienic; variable capture is possible
@@ -52,15 +57,31 @@ a, b = 3, 4
 - No `vector`, `vector-ref`, `vector-set!`, etc.
 
 **No standard I/O**
-- No `display`, `read`, `write`, `newline` — use Python interop for I/O
+- No `display`, `read`, `write`, `newline` -- use Python interop for I/O
 
 **No `call/cc` or multiple values**
 - No `call-with-current-continuation`, `values`, or `call-with-values`
 
 **`not` treats only `#f` as false**
-- `(not 0)` → `#f`, `(not '())` → `#f` — correct Scheme semantics, but unlike Python
+- `(not 0)` -> `#f`, `(not '())` -> `#f` -- correct Scheme semantics, but unlike Python
+
+**`if` without else returns `None`**
+- `(if #f 1)` returns Python `None`, not `#f` -- standard Scheme says "unspecified"; avoid relying on the return value of a one-armed `if`
+
+**`=` is numeric-only**
+- `(= "a" "a")` returns `#f`; use `equal?` for non-numeric equality
+
+**Unary `-` and `/`**
+- `(- x)` negates: `(- 3)` -> `-3`
+- `(/ x)` inverts: `(/ 4)` -> `0.25`
+
+**`map` accepts multiple lists**
+- `(map + '(1 2) '(3 4))` -> `(4 6)` -- zips and applies
+
+**`string->number` returns `#f` on failure**
+- `(string->number "abc")` -> `#f`, not an error
 
 **Python interop special forms (non-standard)**
-- `(@ (k v) …)` — build a kwargs dict; passed as `**kwargs` to any Python callable
-- `(-> obj attr)` — access a Python attribute or bound method
-- `($ expr)` — evaluate `expr` to a symbol, return its value from the current env
+- `(@ (k v) ...)` -- build a kwargs dict; passed as `**kwargs` to any Python callable
+- `(-> obj attr)` -- access a Python attribute or bound method
+- `($ expr)` -- evaluate `expr` to a symbol, return its value from the current env
